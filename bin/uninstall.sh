@@ -104,9 +104,17 @@ scan_applications() {
     local cache_dir="$HOME/.cache/mole"
     local cache_file="$cache_dir/app_scan_cache"
     local cache_meta="$cache_dir/app_scan_meta"
+    local cache_dir_mtime="$cache_dir/app_dir_mtime"
     local cache_ttl=86400 # 24 hours cache validity (app count change will trigger refresh)
 
     mkdir -p "$cache_dir" 2> /dev/null
+
+    # Get modification time of app directories to detect new installations
+    local sys_app_mtime
+    sys_app_mtime=$(stat -f%m "/Applications" 2> /dev/null || echo "0")
+    local user_app_mtime
+    user_app_mtime=$(stat -f%m "$HOME/Applications" 2> /dev/null || echo "0")
+    local combined_mtime=$((sys_app_mtime + user_app_mtime))
 
     # Quick count of current apps (system + user directories)
     local current_app_count
@@ -118,13 +126,15 @@ scan_applications() {
     )
 
     # Check if cache is valid unless explicitly disabled
-    if [[ -f "$cache_file" && -f "$cache_meta" ]]; then
+    if [[ -f "$cache_file" && -f "$cache_meta" && -f "$cache_dir_mtime" ]]; then
         local cache_age=$(($(date +%s) - $(stat -f%m "$cache_file" 2> /dev/null || echo 0)))
         local cached_app_count
         cached_app_count=$(cat "$cache_meta" 2> /dev/null || echo "0")
+        local cached_dir_mtime
+        cached_dir_mtime=$(cat "$cache_dir_mtime" 2> /dev/null || echo "0")
 
-        # Cache is valid if: age < TTL AND app count matches
-        if [[ $cache_age -lt $cache_ttl && "$cached_app_count" == "$current_app_count" ]]; then
+        # Cache is valid if: age < TTL AND app count matches AND directory not modified
+        if [[ $cache_age -lt $cache_ttl && "$cached_app_count" == "$current_app_count" && "$cached_dir_mtime" == "$combined_mtime" ]]; then
             # Silent - cache hit, return immediately without any output
             echo "$cache_file"
             return 0
@@ -371,9 +381,10 @@ scan_applications() {
     }
     rm -f "$temp_file"
 
-    # Update cache with app count metadata
+    # Update cache with app count metadata and directory modification time
     cp "${temp_file}.sorted" "$cache_file" 2> /dev/null || true
     echo "$current_app_count" > "$cache_meta" 2> /dev/null || true
+    echo "$combined_mtime" > "$cache_dir_mtime" 2> /dev/null || true
 
     # Verify sorted file exists before returning
     if [[ -f "${temp_file}.sorted" ]]; then
