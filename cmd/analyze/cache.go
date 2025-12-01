@@ -33,6 +33,7 @@ func snapshotFromModel(m model) historyEntry {
 		EntryOffset:   m.offset,
 		LargeSelected: m.largeSelected,
 		LargeOffset:   m.largeOffset,
+		IsOverview:    m.isOverview,
 	}
 }
 

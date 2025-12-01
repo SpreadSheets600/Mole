@@ -54,6 +54,7 @@ type historyEntry struct {
 	LargeSelected int
 	LargeOffset   int
 	Dirty         bool
+	IsOverview    bool
 }
 
 type scanResultMsg struct {
@@ -602,8 +603,20 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.offset = last.EntryOffset
 		m.largeSelected = last.LargeSelected
 		m.largeOffset = last.LargeOffset
-		m.isOverview = false
+		m.isOverview = last.IsOverview
 		if last.Dirty {
+			// If returning to overview mode, refresh overview entries instead of scanning
+			if last.IsOverview {
+				m.hydrateOverviewEntries()
+				m.totalSize = sumKnownEntrySizes(m.entries)
+				m.status = "Ready"
+				m.scanning = false
+				if nextPendingOverviewIndex(m.entries) >= 0 {
+					m.overviewScanning = true
+					return m, m.scheduleOverviewScans()
+				}
+				return m, nil
+			}
 			m.status = "Scanning..."
 			m.scanning = true
 			return m, tea.Batch(m.scanCmd(m.path), tickCmd())
@@ -637,11 +650,14 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			*m.currentPath = ""
 		}
 		return m, tea.Batch(m.scanCmd(m.path), tickCmd())
-	case "L":
-		m.showLargeFiles = !m.showLargeFiles
-		if m.showLargeFiles {
-			m.largeSelected = 0
-			m.largeOffset = 0
+	case "t", "T":
+		// Don't allow switching to large files view in overview mode
+		if !m.inOverviewMode() {
+			m.showLargeFiles = !m.showLargeFiles
+			if m.showLargeFiles {
+				m.largeSelected = 0
+				m.largeOffset = 0
+			}
 		}
 	case "o":
 		// Open selected entry
@@ -735,9 +751,8 @@ func (m model) enterSelectedDir() (tea.Model, tea.Cmd) {
 	}
 	selected := m.entries[m.selected]
 	if selected.IsDir {
-		if !m.inOverviewMode() {
-			m.history = append(m.history, snapshotFromModel(m))
-		}
+		// Always save current state to history (including overview mode)
+		m.history = append(m.history, snapshotFromModel(m))
 		m.path = selected.Path
 		m.selected = 0
 		m.offset = 0
@@ -1085,13 +1100,18 @@ func (m model) View() string {
 
 	fmt.Fprintln(&b)
 	if m.inOverviewMode() {
-		fmt.Fprintf(&b, "%s↑↓→  |  Enter  |  R Refresh  |  O Open  |  F Show  |  Q Quit%s\n", colorGray, colorReset)
+		// Show ← Back if there's history (entered from a parent directory)
+		if len(m.history) > 0 {
+			fmt.Fprintf(&b, "%s↑↓←→  |  Enter  |  R Refresh  |  O Open  |  F Show  |  ← Back  |  Q Quit%s\n", colorGray, colorReset)
+		} else {
+			fmt.Fprintf(&b, "%s↑↓→  |  Enter  |  R Refresh  |  O Open  |  F Show  |  Q Quit%s\n", colorGray, colorReset)
+		}
 	} else if m.showLargeFiles {
-		fmt.Fprintf(&b, "%s↑↓  |  R Refresh  |  O Open  |  F Show  |  ⌫ Delete  |  L Back  |  Q Quit%s\n", colorGray, colorReset)
+		fmt.Fprintf(&b, "%s↑↓←  |  R Refresh  |  O Open  |  F Show  |  ⌫ Delete  |  ← Back  |  Q Quit%s\n", colorGray, colorReset)
 	} else {
 		largeFileCount := len(m.largeFiles)
 		if largeFileCount > 0 {
-			fmt.Fprintf(&b, "%s↑↓←→  |  Enter  |  R Refresh  |  O Open  |  F Show  |  ⌫ Delete  |  L Large(%d)  |  Q Quit%s\n", colorGray, largeFileCount, colorReset)
+			fmt.Fprintf(&b, "%s↑↓←→  |  Enter  |  R Refresh  |  O Open  |  F Show  |  ⌫ Delete  |  T Top(%d)  |  Q Quit%s\n", colorGray, largeFileCount, colorReset)
 		} else {
 			fmt.Fprintf(&b, "%s↑↓←→  |  Enter  |  R Refresh  |  O Open  |  F Show  |  ⌫ Delete  |  Q Quit%s\n", colorGray, colorReset)
 		}
