@@ -272,13 +272,16 @@ safe_clean() {
             (
                 local size
                 # Timeout protection: prevent du from hanging on problematic paths
-                size=$(run_with_timeout 5 get_path_size_kb "$path")
+                size=$(get_path_size_kb "$path")
                 [[ -z "$size" || ! "$size" =~ ^[0-9]+$ ]] && size=0
                 local count
-                # Timeout protection: prevent find from hanging on problematic paths
-                count=$(run_with_timeout 10 sh -c "find \"$path\" -type f 2> /dev/null | wc -l | tr -d ' '")
-                # If timeout or error, set count to 0 to skip this path
-                [[ -z "$count" || ! "$count" =~ ^[0-9]+$ ]] && count=0
+                # Quick file count - limit for performance
+                if [[ "$size" -gt 0 ]]; then
+                    count=$(find "$path" -type f 2>/dev/null | head -1000 | wc -l | tr -d ' ')
+                    [[ -z "$count" || ! "$count" =~ ^[0-9]+$ ]] && count=0
+                else
+                    count=0
+                fi
                 # Use index + PID for unique filename
                 local tmp_file="$temp_dir/result_${idx}.$$"
                 echo "$size $count" > "$tmp_file"
@@ -334,15 +337,17 @@ safe_clean() {
         if [[ -t 1 ]]; then MOLE_SPINNER_PREFIX="  " start_inline_spinner "Scanning $total_paths items..."; fi
 
         for path in "${existing_paths[@]}"; do
-            local size_bytes
-            # Timeout protection: prevent du from hanging on problematic paths
-            size_bytes=$(run_with_timeout 5 get_path_size_kb "$path")
+            local size_bytes count
+            # Get size quickly - du is fast
+            size_bytes=$(get_path_size_kb "$path")
             [[ -z "$size_bytes" || ! "$size_bytes" =~ ^[0-9]+$ ]] && size_bytes=0
-            local count
-            # Timeout protection: prevent find from hanging on problematic paths
-            count=$(run_with_timeout 10 sh -c "find \"$path\" -type f 2> /dev/null | wc -l | tr -d ' '")
-            # If timeout or error, set count to 0 to skip this path
-            [[ -z "$count" || ! "$count" =~ ^[0-9]+$ ]] && count=0
+            # Quick file count for display - limit for performance
+            if [[ "$size_bytes" -gt 0 ]]; then
+                count=$(find "$path" -type f 2>/dev/null | head -1000 | wc -l | tr -d ' ')
+                [[ -z "$count" || ! "$count" =~ ^[0-9]+$ ]] && count=0
+            else
+                count=0
+            fi
 
             if [[ "$count" -gt 0 && "$size_bytes" -gt 0 ]]; then
                 if [[ "$DRY_RUN" != "true" ]]; then
@@ -679,24 +684,21 @@ perform_cleanup() {
             "$HOME/Applications"
         )
 
-        # Scan for .app bundles with timeout protection
+        # Scan for .app bundles - optimized with PlistBuddy and xargs
         for search_path in "${search_paths[@]}"; do
             [[ -d "$search_path" ]] || continue
-            while IFS= read -r app; do
-                [[ -f "$app/Contents/Info.plist" ]] || continue
-                bundle_id=$(defaults read "$app/Contents/Info.plist" CFBundleIdentifier 2> /dev/null || echo "")
-                [[ -n "$bundle_id" ]] && echo "$bundle_id" >> "$installed_bundles"
-            done < <(run_with_timeout 10 command find "$search_path" -maxdepth 2 -type d -name "*.app" 2> /dev/null || true)
+            find "$search_path" -maxdepth 3 -name "Info.plist" -path "*/Contents/Info.plist" 2>/dev/null | \
+                xargs -I {} /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" {} 2>/dev/null | \
+                grep -v "^$" >> "$installed_bundles" || true
         done
 
-        # Get running applications and LaunchAgents with timeout protection
-        local running_apps=$(run_with_timeout 5 osascript -e 'tell application "System Events" to get bundle identifier of every application process' 2> /dev/null || echo "")
-        echo "$running_apps" | tr ',' '\n' | sed -e 's/^ *//;s/ *$//' -e '/^$/d' >> "$installed_bundles"
+        # Get running applications - no timeout needed for fast osascript
+        osascript -e 'tell application "System Events" to get bundle identifier of every application process' 2>/dev/null | \
+            tr ',' '\n' | sed -e 's/^ *//;s/ *$//' -e '/^$/d' >> "$installed_bundles" || true
 
-        run_with_timeout 5 find ~/Library/LaunchAgents /Library/LaunchAgents \
-            -name "*.plist" -type f 2> /dev/null | while IFS= read -r plist; do
-            basename "$plist" .plist
-        done >> "$installed_bundles" 2> /dev/null || true
+        # Get LaunchAgents - fast operation, no timeout needed
+        find ~/Library/LaunchAgents /Library/LaunchAgents -name "*.plist" -type f 2>/dev/null | \
+            xargs -I {} basename {} .plist >> "$installed_bundles" 2>/dev/null || true
 
         # Deduplicate
         sort -u "$installed_bundles" -o "$installed_bundles"
