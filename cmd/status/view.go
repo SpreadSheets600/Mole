@@ -201,7 +201,7 @@ func renderHeader(m MetricsSnapshot, errMsg string, animFrame int, termWidth int
 	if errMsg != "" {
 		return lipgloss.JoinVertical(lipgloss.Left, headerLine, "", mole, dangerStyle.Render(errMsg), "")
 	}
-	return headerLine + "\n\n" + mole
+	return headerLine + "\n" + mole
 }
 
 func getScoreStyle(score int) lipgloss.Style {
