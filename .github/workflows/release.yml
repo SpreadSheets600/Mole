@@ -47,8 +47,8 @@ jobs:
 
       - name: Commit binaries for release
         run: |
-          git config user.name "Bot"
-          git config user.email "noreply@github.com"
+          git config user.name "Tw93"
+          git config user.email "tw93@qq.com"
           git add bin/analyze-go bin/status-go
           if git diff --staged --quiet; then
             echo "No binary changes to commit"

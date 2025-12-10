@@ -52,6 +52,9 @@ read_key() {
         '/') echo "FILTER" ;;
         'q' | 'Q') echo "QUIT" ;;
         'R') echo "RETRY" ;;
+        'm' | 'M') echo "MORE" ;;
+        'u' | 'U') echo "UPDATE" ;;
+        't' | 'T') echo "TOUCHID" ;;
         $'\x03') echo "QUIT" ;;
         $'\x7f' | $'\x08') echo "DELETE" ;;
         $'\x1b')

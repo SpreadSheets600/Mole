@@ -3,8 +3,8 @@
 # Interactive application uninstaller with keyboard navigation
 #
 # Usage:
-#   uninstall.sh          # Launch interactive uninstaller
-#   uninstall.sh --help   # Show help information
+#   uninstall.sh                  # Launch interactive uninstaller
+#   uninstall.sh --force-rescan   # Rescan apps and refresh cache
 
 set -euo pipefail
 

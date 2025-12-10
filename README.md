@@ -41,21 +41,23 @@ brew install tw93/tap/mole
 **Run:**
 
 ```bash
-mo                      # Interactive menu
-mo clean                # Deep cleanup
-mo clean --dry-run      # Preview cleanup plan
-mo clean --whitelist    # Adjust protected caches
-mo uninstall            # Remove apps + leftovers
-mo optimize             # Refresh caches & services
-mo optimize --whitelist # Adjust protected optimization items
-mo analyze              # Visual disk explorer
-mo status               # Live system health dashboard
+mo                           # Interactive menu
+mo clean                     # Deep cleanup
+mo uninstall                 # Remove apps + leftovers
+mo optimize                  # Refresh caches & services
+mo analyze                   # Visual disk explorer
+mo status                    # Live system health dashboard
 
-mo touchid              # Configure Touch ID for sudo
-mo update               # Update Mole
-mo remove               # Remove Mole from system
-mo --help               # Show help
-mo --version            # Show installed version
+mo touchid                   # Configure Touch ID for sudo
+mo update                    # Update Mole
+mo remove                    # Remove Mole from system
+mo --help                    # Show help
+mo --version                 # Show installed version
+
+mo clean --dry-run           # Preview cleanup plan
+mo clean --whitelist         # Adjust protected caches
+mo uninstall --force-rescan  # Rescan apps and refresh cache
+mo optimize --whitelist      # Adjust protected optimization items
 
 ```
 
