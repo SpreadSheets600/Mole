@@ -155,17 +155,11 @@ EOF
 get_optimize_whitelist_items() {
     # Format: "display_name|pattern|category"
     cat << 'EOF'
-macOS Firewall check|firewall|security_check
-Gatekeeper check|gatekeeper|security_check
-macOS system updates check|check_macos_updates|update_check
-Mole updates check|check_mole_update|update_check
-Homebrew health check (doctor)|check_brew_health|health_check
-SIP status check|check_sip|security_check
-FileVault status check|check_filevault|security_check
-TouchID sudo check|check_touchid|config_check
-Rosetta 2 check|check_rosetta|config_check
-Git configuration check|check_git_config|config_check
-Login items check|check_login_items|config_check
+User /tmp stale cleanup|clean_tmp|cleanup
+Package manager cache cleanup|clean_package_cache|cleanup
+systemd journal vacuum|vacuum_journal|cleanup
+Filesystem TRIM|trim_filesystem|cleanup
+Python pip cache cleanup|clean_pip_cache|cleanup
 EOF
 }
 

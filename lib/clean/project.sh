@@ -68,12 +68,24 @@ is_project_container() {
     return 1
 }
 
+is_slow_scan_path() {
+    local dir="$1"
+    if is_wsl; then
+        case "$dir" in
+            /mnt/* | /media/* | /run/* | /proc/* | /sys/*)
+                return 0
+                ;;
+        esac
+    fi
+    return 1
+}
+
 # Discover project directories in $HOME.
 discover_project_dirs() {
     local -a discovered=()
 
     for path in "${DEFAULT_PURGE_SEARCH_PATHS[@]}"; do
-        if [[ -d "$path" ]]; then
+        if [[ -d "$path" ]] && ! is_slow_scan_path "$path"; then
             discovered+=("$path")
         fi
     done
@@ -83,6 +95,7 @@ discover_project_dirs() {
     for dir in "$HOME"/*/; do
         [[ ! -d "$dir" ]] && continue
         dir="${dir%/}" # Remove trailing slash
+        is_slow_scan_path "$dir" && continue
 
         local already_found=false
         for existing in "${DEFAULT_PURGE_SEARCH_PATHS[@]}"; do

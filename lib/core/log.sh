@@ -21,9 +21,9 @@ fi
 # Logging Configuration
 # ============================================================================
 
-readonly LOG_FILE="${HOME}/.config/mole/mole.log"
-readonly DEBUG_LOG_FILE="${HOME}/.config/mole/mole_debug_session.log"
-readonly OPERATIONS_LOG_FILE="${HOME}/.config/mole/operations.log"
+LOG_FILE="${HOME}/.config/mole/mole.log"
+DEBUG_LOG_FILE="${HOME}/.config/mole/mole_debug_session.log"
+OPERATIONS_LOG_FILE="${HOME}/.config/mole/operations.log"
 readonly LOG_MAX_SIZE_DEFAULT=1048576   # 1MB
 readonly OPLOG_MAX_SIZE_DEFAULT=5242880 # 5MB
 
@@ -32,6 +32,19 @@ ensure_user_file "$LOG_FILE"
 if [[ "${MO_NO_OPLOG:-}" != "1" ]]; then
     ensure_user_file "$OPERATIONS_LOG_FILE"
 fi
+
+if [[ ! -w "$(dirname "$LOG_FILE")" ]]; then
+    local_log_dir="${TMPDIR:-/tmp}/mole"
+    mkdir -p "$local_log_dir" 2> /dev/null || true
+    LOG_FILE="${local_log_dir}/mole.log"
+    DEBUG_LOG_FILE="${local_log_dir}/mole_debug_session.log"
+    OPERATIONS_LOG_FILE="${local_log_dir}/operations.log"
+    touch "$LOG_FILE" "$DEBUG_LOG_FILE" "$OPERATIONS_LOG_FILE" 2> /dev/null || true
+fi
+
+readonly LOG_FILE
+readonly DEBUG_LOG_FILE
+readonly OPERATIONS_LOG_FILE
 
 # ============================================================================
 # Log Rotation

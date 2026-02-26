@@ -15,7 +15,7 @@ show_clean_help() {
 show_installer_help() {
     echo "Usage: mo installer [OPTIONS]"
     echo ""
-    echo "Find and remove installer files (.dmg, .pkg, .iso, .xip, .zip)."
+    echo "Find and remove installer files (.deb, .rpm, .pkg.tar.zst, .AppImage, .flatpakref, .snap, .iso, archives)."
     echo ""
     echo "Options:"
     echo "  --debug           Show detailed operation logs"

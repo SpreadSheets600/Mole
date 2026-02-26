@@ -13,6 +13,11 @@ LIB_DIR="$(cd "$SCRIPT_DIR/../lib" && pwd)"
 # shellcheck source=../lib/core/common.sh
 source "$LIB_DIR/core/common.sh"
 
+if [[ "$(uname -s 2> /dev/null || echo unknown)" != "Darwin" ]]; then
+    log_error "Touch ID is only supported on macOS"
+    exit 1
+fi
+
 # Set up global cleanup trap
 trap cleanup_temp_files EXIT INT TERM
 

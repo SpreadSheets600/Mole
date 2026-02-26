@@ -1,6 +1,6 @@
 #!/bin/bash
 # Mole - Installer command
-# Find and remove installer files - .dmg, .pkg, .mpkg, .iso, .xip, .zip
+# Find and remove installer files for Linux/WSL.
 
 set -euo pipefail
 
@@ -34,14 +34,9 @@ readonly INSTALLER_SCAN_PATHS=(
     "$HOME/Desktop"
     "$HOME/Documents"
     "$HOME/Public"
-    "$HOME/Library/Downloads"
-    "/Users/Shared"
-    "/Users/Shared/Downloads"
-    "$HOME/Library/Caches/Homebrew"
-    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Downloads"
-    "$HOME/Library/Containers/com.apple.mail/Data/Library/Mail Downloads"
-    "$HOME/Library/Application Support/Telegram Desktop"
-    "$HOME/Downloads/Telegram Desktop"
+    "$HOME/.cache"
+    "$HOME/.local/share/Trash/files"
+    "/tmp"
 )
 readonly MAX_ZIP_ENTRIES=50
 ZIP_LIST_CMD=()
@@ -65,7 +60,7 @@ is_installer_zip() {
     if ! "${ZIP_LIST_CMD[@]}" "$zip" 2> /dev/null |
         head -n "$cap" |
         awk '
-            /\.(app|pkg|dmg|xip)(\/|$)/ { found=1; exit 0 }
+            /\.(deb|rpm|pkg\.tar\.zst|appimage|flatpakref|snap)(\/|$)/ { found=1; exit 0 }
             END { exit found ? 0 : 1 }
         '; then
         return 1
@@ -79,7 +74,7 @@ handle_candidate_file() {
 
     [[ -L "$file" ]] && return 0 # Skip symlinks explicitly
     case "$file" in
-        *.dmg | *.pkg | *.mpkg | *.iso | *.xip)
+        *.deb | *.rpm | *.pkg.tar.zst | *.AppImage | *.appimage | *.flatpakref | *.snap | *.iso | *.tar.gz | *.tar.xz)
             echo "$file"
             ;;
         *.zip)
@@ -104,7 +99,7 @@ scan_installers_in_path() {
             handle_candidate_file "$file"
         done < <(
             fd --no-ignore --hidden --type f --max-depth "$max_depth" \
-                -e dmg -e pkg -e mpkg -e iso -e xip -e zip \
+                -e deb -e rpm -e zst -e AppImage -e appimage -e flatpakref -e snap -e iso -e gz -e xz -e zip \
                 . "$path" 2> /dev/null || true
         )
     else
@@ -112,8 +107,9 @@ scan_installers_in_path() {
             handle_candidate_file "$file"
         done < <(
             find "$path" -maxdepth "$max_depth" -type f \
-                \( -name '*.dmg' -o -name '*.pkg' -o -name '*.mpkg' \
-                -o -name '*.iso' -o -name '*.xip' -o -name '*.zip' \) \
+                \( -name '*.deb' -o -name '*.rpm' -o -name '*.pkg.tar.zst' \
+                -o -name '*.AppImage' -o -name '*.appimage' -o -name '*.flatpakref' -o -name '*.snap' \
+                -o -name '*.iso' -o -name '*.tar.gz' -o -name '*.tar.xz' -o -name '*.zip' \) \
                 2> /dev/null || true
         )
     fi
@@ -146,12 +142,9 @@ get_source_display() {
         "$HOME/Desktop"*) echo "Desktop" ;;
         "$HOME/Documents"*) echo "Documents" ;;
         "$HOME/Public"*) echo "Public" ;;
-        "$HOME/Library/Downloads"*) echo "Library" ;;
-        "/Users/Shared"*) echo "Shared" ;;
-        "$HOME/Library/Caches/Homebrew"*) echo "Homebrew" ;;
-        "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Downloads"*) echo "iCloud" ;;
-        "$HOME/Library/Containers/com.apple.mail"*) echo "Mail" ;;
-        *"Telegram Desktop"*) echo "Telegram" ;;
+        "$HOME/.cache"*) echo "Cache" ;;
+        "$HOME/.local/share/Trash/files"*) echo "Trash" ;;
+        "/tmp"*) echo "Temp" ;;
         *) echo "${dir_path##*/}" ;;
     esac
 }
@@ -656,7 +649,7 @@ show_summary() {
         freed_mb=$(echo "$total_size_freed_kb" | awk '{printf "%.2f", $1/1024}')
 
         summary_details+=("Removed ${GREEN}$total_deleted${NC} installers, freed ${GREEN}${freed_mb}MB${NC}")
-        summary_details+=("Your Mac is cleaner now!")
+        summary_details+=("System cleanup complete.")
     else
         summary_details+=("No installers were removed")
     fi

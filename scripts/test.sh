@@ -182,7 +182,7 @@ echo ""
 
 echo "6. Testing installation..."
 # Skip if Homebrew mole is installed (install.sh will refuse to overwrite)
-if brew list mole &> /dev/null; then
+if command -v brew > /dev/null 2>&1 && brew list mole &> /dev/null; then
     printf "${GREEN}${ICON_SUCCESS} Installation test skipped, Homebrew${NC}\n"
 elif ./install.sh --prefix /tmp/mole-test > /dev/null 2>&1; then
     if [ -f /tmp/mole-test/mole ]; then

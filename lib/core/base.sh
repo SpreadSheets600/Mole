@@ -84,46 +84,44 @@ readonly MOLE_MAX_ORPHAN_ITERATIONS=100  # Max iterations for orphaned app data 
 # ============================================================================
 readonly FINDER_METADATA_SENTINEL="FINDER_METADATA"
 declare -a DEFAULT_WHITELIST_PATTERNS=(
-    "$HOME/Library/Caches/ms-playwright*"
+    "$HOME/.cache/ms-playwright*"
     "$HOME/.cache/huggingface*"
     "$HOME/.m2/repository/*"
     "$HOME/.gradle/caches/*"
     "$HOME/.gradle/daemon/*"
     "$HOME/.ollama/models/*"
-    "$HOME/Library/Caches/com.nssurge.surge-mac/*"
-    "$HOME/Library/Application Support/com.nssurge.surge-mac/*"
-    "$HOME/Library/Caches/org.R-project.R/R/renv/*"
-    "$HOME/Library/Caches/pypoetry/virtualenvs*"
-    "$HOME/Library/Caches/JetBrains*"
-    "$HOME/Library/Caches/com.jetbrains.toolbox*"
-    "$HOME/Library/Application Support/JetBrains*"
-    "$HOME/Library/Caches/com.apple.finder"
-    "$HOME/Library/Mobile Documents*"
-    # System-critical caches that affect macOS functionality and stability
-    # CRITICAL: Removing these will cause system search and UI issues
-    "$HOME/Library/Caches/com.apple.FontRegistry*"
-    "$HOME/Library/Caches/com.apple.spotlight*"
-    "$HOME/Library/Caches/com.apple.Spotlight*"
-    "$HOME/Library/Caches/CloudKit*"
+    "$HOME/.cache/pypoetry/virtualenvs*"
+    "$HOME/.cache/JetBrains*"
+    "$HOME/.cache/Code/*"
+    "$HOME/.local/share/containers/*"
+    "$HOME/.local/share/flatpak/*"
     "$FINDER_METADATA_SENTINEL"
 )
 
-declare -a DEFAULT_OPTIMIZE_WHITELIST_PATTERNS=(
-    "check_brew_health"
-    "check_touchid"
-    "check_git_config"
-)
+declare -a DEFAULT_OPTIMIZE_WHITELIST_PATTERNS=()
 
 # ============================================================================
-# BSD Stat Compatibility
+# Stat Compatibility (BSD/GNU)
 # ============================================================================
-readonly STAT_BSD="/usr/bin/stat"
+if /usr/bin/stat -f%z / 2> /dev/null | grep -Eq '^[0-9]+$'; then
+    readonly STAT_BSD="/usr/bin/stat"
+    readonly STAT_FMT_SIZE="-f%z"
+    readonly STAT_FMT_MTIME="-f%m"
+    readonly STAT_FMT_OWNER="-f%Su"
+    readonly STAT_FMT_UID="-f%u"
+else
+    readonly STAT_BSD="stat"
+    readonly STAT_FMT_SIZE="-c%s"
+    readonly STAT_FMT_MTIME="-c%Y"
+    readonly STAT_FMT_OWNER="-c%U"
+    readonly STAT_FMT_UID="-c%u"
+fi
 
 # Get file size in bytes
 get_file_size() {
     local file="$1"
     local result
-    result=$($STAT_BSD -f%z "$file" 2> /dev/null)
+    result=$($STAT_BSD "$STAT_FMT_SIZE" "$file" 2> /dev/null)
     echo "${result:-0}"
 }
 
@@ -135,7 +133,7 @@ get_file_mtime() {
         return
     }
     local result
-    result=$($STAT_BSD -f%m "$file" 2> /dev/null || echo "")
+    result=$($STAT_BSD "$STAT_FMT_MTIME" "$file" 2> /dev/null || echo "")
     if [[ "$result" =~ ^[0-9]+$ ]]; then
         echo "$result"
     else
@@ -164,12 +162,83 @@ get_epoch_seconds() {
 # Get file owner username
 get_file_owner() {
     local file="$1"
-    $STAT_BSD -f%Su "$file" 2> /dev/null || echo ""
+    $STAT_BSD "$STAT_FMT_OWNER" "$file" 2> /dev/null || echo ""
+}
+
+get_file_uid() {
+    local file="$1"
+    $STAT_BSD "$STAT_FMT_UID" "$file" 2> /dev/null || echo ""
 }
 
 # ============================================================================
 # System Utilities
 # ============================================================================
+
+is_linux() {
+    [[ "$(uname -s 2> /dev/null || echo unknown)" == "Linux" ]]
+}
+
+is_wsl() {
+    if ! is_linux; then
+        return 1
+    fi
+
+    if [[ -r /proc/sys/kernel/osrelease ]] && grep -qi "microsoft" /proc/sys/kernel/osrelease 2> /dev/null; then
+        return 0
+    fi
+    if [[ -r /proc/version ]] && grep -qi "microsoft" /proc/version 2> /dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+get_linux_distro_id() {
+    local distro="linux"
+    if [[ -r /etc/os-release ]]; then
+        distro=$(awk -F= '/^ID=/{gsub(/"/, "", $2); print tolower($2); exit}' /etc/os-release 2> /dev/null || echo "linux")
+    fi
+    echo "${distro:-linux}"
+}
+
+get_linux_distro_like() {
+    local like=""
+    if [[ -r /etc/os-release ]]; then
+        like=$(awk -F= '/^ID_LIKE=/{gsub(/"/, "", $2); print tolower($2); exit}' /etc/os-release 2> /dev/null || echo "")
+    fi
+    echo "$like"
+}
+
+detect_package_manager() {
+    local distro_id distro_like
+    distro_id=$(get_linux_distro_id)
+    distro_like=$(get_linux_distro_like)
+
+    if command -v apt-get > /dev/null 2>&1 || [[ "$distro_id" == "ubuntu" || "$distro_id" == "debian" || "$distro_like" == *"debian"* ]]; then
+        echo "apt"
+        return 0
+    fi
+    if command -v dnf > /dev/null 2>&1 || [[ "$distro_id" == "fedora" || "$distro_like" == *"fedora"* || "$distro_like" == *"rhel"* ]]; then
+        echo "dnf"
+        return 0
+    fi
+    if command -v pacman > /dev/null 2>&1 || [[ "$distro_id" == "arch" || "$distro_like" == *"arch"* ]]; then
+        echo "pacman"
+        return 0
+    fi
+    if command -v zypper > /dev/null 2>&1 || [[ "$distro_id" == "opensuse-tumbleweed" || "$distro_id" == "opensuse-leap" || "$distro_like" == *"suse"* ]]; then
+        echo "zypper"
+        return 0
+    fi
+    if command -v yum > /dev/null 2>&1; then
+        echo "yum"
+        return 0
+    fi
+    if command -v apk > /dev/null 2>&1; then
+        echo "apk"
+        return 0
+    fi
+    echo "unknown"
+}
 
 # Check if System Integrity Protection is enabled
 # Returns: 0 if SIP is enabled, 1 if disabled or cannot determine
@@ -239,7 +308,13 @@ is_darwin_ge() {
 get_optimal_parallel_jobs() {
     local operation_type="${1:-default}"
     local cpu_cores
-    cpu_cores=$(sysctl -n hw.ncpu 2> /dev/null || echo 4)
+    if is_linux && command -v nproc > /dev/null 2>&1; then
+        cpu_cores=$(nproc 2> /dev/null || echo 4)
+    else
+        cpu_cores=$(sysctl -n hw.ncpu 2> /dev/null || echo 4)
+    fi
+    [[ "$cpu_cores" =~ ^[0-9]+$ ]] || cpu_cores=4
+    ((cpu_cores > 0)) || cpu_cores=4
     case "$operation_type" in
         scan | io)
             echo $((cpu_cores * 2))
@@ -382,7 +457,7 @@ ensure_user_dir() {
         # Early stop: if ownership is already correct, no need to continue up the tree
         if [[ -d "$dir" ]]; then
             local current_uid
-            current_uid=$("$STAT_BSD" -f%u "$dir" 2> /dev/null || echo "")
+            current_uid=$(get_file_uid "$dir")
             if [[ "$current_uid" == "$owner_uid" ]]; then
                 break
             fi

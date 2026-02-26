@@ -150,9 +150,7 @@ perform_auto_fix() {
     if [[ -n "${TOUCHID_NOT_CONFIGURED:-}" && "${TOUCHID_NOT_CONFIGURED}" == "true" ]]; then
         echo -e "${BLUE}${ICON_ARROW}${NC} Configuring Touch ID for sudo..."
         local pam_file="/etc/pam.d/sudo"
-        if sudo bash -c "grep -q 'pam_tid.so' '$pam_file' 2>/dev/null || sed -i '' '2i\\
-auth       sufficient     pam_tid.so
-' '$pam_file'" 2> /dev/null; then
+        if sudo bash -c "grep -q 'pam_tid.so' '$pam_file' 2>/dev/null || awk 'NR==2{print \"auth       sufficient     pam_tid.so\"}1' '$pam_file' > '${pam_file}.mole.tmp' && mv '${pam_file}.mole.tmp' '$pam_file'" 2> /dev/null; then
             echo -e "${GREEN}✓${NC} Touch ID configured"
             ((fixed_count++))
             fixed_items+=("Touch ID configured for sudo")
