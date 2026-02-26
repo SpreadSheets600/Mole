@@ -567,6 +567,14 @@ download_binary() {
         return 0
     fi
 
+    # On Linux, building locally is usually faster/more reliable than
+    # downloading release assets (which may not include linux binaries).
+    if [[ "$OS_NAME" == "Linux" ]] && command -v go > /dev/null 2>&1; then
+        if build_binary_from_source "$binary_name" "$target_path"; then
+            return 0
+        fi
+    fi
+
     if [[ "${MOLE_EDGE_INSTALL:-}" == "true" ]]; then
         if build_binary_from_source "$binary_name" "$target_path"; then
             return 0
@@ -610,7 +618,7 @@ download_binary() {
 
     local url=""
     for url in "${urls[@]}"; do
-        if curl -fsSL --connect-timeout 10 --max-time 60 -o "$target_path" "$url"; then
+        if curl -fsSL --connect-timeout 10 --max-time 60 -o "$target_path" "$url" 2> /dev/null; then
             if [[ -t 1 ]]; then stop_line_spinner; fi
             chmod +x "$target_path"
             if [[ "$OS_NAME" == "Darwin" ]] && command -v xattr > /dev/null 2>&1; then
@@ -619,6 +627,7 @@ download_binary() {
             log_success "Downloaded ${binary_name} binary"
             return 0
         fi
+        rm -f "$target_path" 2> /dev/null || true
     done
 
     if [[ -t 1 ]]; then stop_line_spinner; fi
