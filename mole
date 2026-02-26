@@ -1,5 +1,5 @@
 #!/bin/bash
-# Mole - Main CLI entrypoint.
+# Linux-Mole - Main CLI entrypoint.
 # Routes subcommands and interactive menu.
 # Handles update/remove flows.
 
@@ -12,7 +12,7 @@ source "$SCRIPT_DIR/lib/core/commands.sh"
 
 trap cleanup_temp_files EXIT INT TERM
 
-DEFAULT_MOLE_REPO="tw93/mole"
+DEFAULT_MOLE_REPO="SpreadSheets600/Mole"
 MOLE_REPO="${MOLE_REPO:-$DEFAULT_MOLE_REPO}"
 MOLE_REPO="${MOLE_REPO#https://github.com/}"
 MOLE_REPO="${MOLE_REPO%.git}"
@@ -26,7 +26,7 @@ MOLE_API_REPO_URL="https://api.github.com/repos/${MOLE_REPO}"
 
 # Version and update helpers
 VERSION="1.27.0"
-MOLE_TAGLINE="Deep clean and optimize your Mac."
+MOLE_TAGLINE="Deep clean and optimize your Linux system."
 
 is_touchid_configured() {
     local pam_sudo_file="/etc/pam.d/sudo"
@@ -179,8 +179,10 @@ show_version() {
     local os_ver
     if command -v sw_vers > /dev/null; then
         os_ver=$(sw_vers -productVersion)
+    elif [[ -r /etc/os-release ]]; then
+        os_ver=$(awk -F= '/^PRETTY_NAME=/{gsub(/"/, "", $2); print $2; exit}' /etc/os-release 2> /dev/null || echo "Unknown")
     else
-        os_ver="Unknown"
+        os_ver="$(uname -s 2> /dev/null || echo Unknown)"
     fi
 
     local arch
@@ -205,8 +207,8 @@ show_version() {
         install_method="Homebrew"
     fi
 
-    printf '\nMole version %s\n' "$VERSION"
-    printf 'macOS: %s\n' "$os_ver"
+    printf '\nLinux-Mole version %s\n' "$VERSION"
+    printf 'OS: %s\n' "$os_ver"
     printf 'Architecture: %s\n' "$arch"
     printf 'Kernel: %s\n' "$kernel"
     printf 'SIP: %s\n' "$sip_status"
@@ -235,7 +237,11 @@ show_help() {
     printf "  %s%-28s%s %s\n" "$GREEN" "mo optimize --dry-run" "$NC" "Preview optimization"
     printf "  %s%-28s%s %s\n" "$GREEN" "mo optimize --whitelist" "$NC" "Manage protected items"
     printf "  %s%-28s%s %s\n" "$GREEN" "mo purge --paths" "$NC" "Configure scan directories"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze /Volumes" "$NC" "Analyze external drives only"
+    if [[ "$(uname -s 2> /dev/null)" == "Linux" ]]; then
+        printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze /mnt" "$NC" "Analyze external drives only"
+    else
+        printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze /Volumes" "$NC" "Analyze external drives only"
+    fi
     printf "  %s%-28s%s %s\n" "$GREEN" "mo update --force" "$NC" "Force reinstall latest stable version"
     printf "  %s%-28s%s %s\n" "$GREEN" "mo update --nightly" "$NC" "Install latest unreleased main branch build"
     echo
@@ -355,7 +361,7 @@ update_mole() {
     fi
 
     if [[ "$requires_sudo" == "true" ]]; then
-        if ! request_sudo_access "Mole update requires admin access"; then
+        if ! request_sudo_access "Linux-Mole update requires admin access"; then
             log_error "Update aborted, admin access denied"
             rm -f "$tmp_installer"
             exit 1
@@ -448,7 +454,7 @@ update_mole() {
 # Remove flow (Homebrew + manual + config/cache).
 remove_mole() {
     if [[ -t 1 ]]; then
-        start_inline_spinner "Detecting Mole installations..."
+        start_inline_spinner "Detecting Linux-Mole installations..."
     else
         echo "Detecting installations..."
     fi
@@ -526,13 +532,13 @@ remove_mole() {
     local manual_count=${#manual_installs[@]}
     local alias_count=${#alias_installs[@]}
     if [[ "$is_homebrew" == "false" && ${manual_count:-0} -eq 0 && ${alias_count:-0} -eq 0 ]]; then
-        printf '%s\n\n' "${YELLOW}No Mole installation detected${NC}"
+        printf '%s\n\n' "${YELLOW}No Linux-Mole installation detected${NC}"
         exit 0
     fi
 
-    echo -e "${YELLOW}Remove Mole${NC}, will delete the following:"
+    echo -e "${YELLOW}Remove Linux-Mole${NC}, will delete the following:"
     if [[ "$is_homebrew" == "true" ]]; then
-        echo "  ${ICON_LIST} Mole via Homebrew"
+        echo "  ${ICON_LIST} Linux-Mole via Homebrew"
     fi
     for install in ${manual_installs[@]+"${manual_installs[@]}"} ${alias_installs[@]+"${alias_installs[@]}"}; do
         echo "  ${ICON_LIST} $install"
@@ -563,7 +569,7 @@ remove_mole() {
             exit 1
         fi
 
-        log_info "Attempting to uninstall Mole via Homebrew..."
+        log_info "Attempting to uninstall Linux-Mole via Homebrew..."
         local brew_uninstall_output
         if ! brew_uninstall_output=$("$brew_cmd" uninstall --force mole 2>&1); then
             has_error=true
@@ -572,7 +578,7 @@ remove_mole() {
             log_warning "Manual step: ${YELLOW}brew uninstall --force mole${NC}"
             echo "" # Add a blank line for readability
         else
-            log_success "Mole uninstalled via Homebrew."
+            log_success "Linux-Mole uninstalled via Homebrew."
         fi
     fi
     if [[ ${manual_count:-0} -gt 0 ]]; then
@@ -614,9 +620,9 @@ remove_mole() {
 
     local final_message
     if [[ "$has_error" == "true" ]]; then
-        final_message="${YELLOW}${ICON_ERROR} Mole uninstalled with some errors, thank you for using Mole!${NC}"
+        final_message="${YELLOW}${ICON_ERROR} Linux-Mole uninstalled with some errors, thank you for using Linux-Mole!${NC}"
     else
-        final_message="${GREEN}${ICON_SUCCESS} Mole uninstalled successfully, thank you for using Mole!${NC}"
+        final_message="${GREEN}${ICON_SUCCESS} Linux-Mole uninstalled successfully, thank you for using Linux-Mole!${NC}"
     fi
     printf '\n%s\n\n' "$final_message"
 

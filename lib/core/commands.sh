@@ -10,7 +10,7 @@ MOLE_COMMANDS=(
     "installer:Find and remove installer files"
     "completion:Setup shell tab completion"
     "update:Update to latest version"
-    "remove:Remove Mole from system"
+    "remove:Remove Linux-Mole from system"
     "help:Show help"
     "version:Show version"
 )

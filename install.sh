@@ -1,5 +1,5 @@
 #!/bin/bash
-# Mole - Installer for manual installs.
+# Linux-Mole - Installer for manual installs.
 # Fetches source/binaries and installs to prefix.
 # Supports update and edge installs.
 
@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-DEFAULT_MOLE_REPO="tw93/mole"
+DEFAULT_MOLE_REPO="SpreadSheets600/Mole"
 MOLE_REPO="${MOLE_REPO:-$DEFAULT_MOLE_REPO}"
 MOLE_REPO="${MOLE_REPO#https://github.com/}"
 MOLE_REPO="${MOLE_REPO%.git}"
@@ -179,7 +179,7 @@ resolve_source_dir() {
         url="${GITHUB_REPO_URL}/archive/refs/tags/${branch}.tar.gz"
     fi
 
-    start_line_spinner "Fetching Mole source, ${branch}..."
+    start_line_spinner "Fetching Linux-Mole source, ${branch}..."
     if command -v curl > /dev/null 2>&1; then
         if curl -fsSL --connect-timeout 10 --max-time 60 -o "$tmp/mole.tar.gz" "$url" 2> /dev/null; then
             if tar -xzf "$tmp/mole.tar.gz" -C "$tmp" 2> /dev/null; then
@@ -204,7 +204,7 @@ resolve_source_dir() {
     fi
     stop_line_spinner
 
-    start_line_spinner "Cloning Mole source..."
+    start_line_spinner "Cloning Linux-Mole source..."
     if command -v git > /dev/null 2>&1; then
         local git_args=("--depth=1")
         if [[ "$branch" != "main" ]]; then
@@ -271,7 +271,7 @@ get_installed_version() {
     local binary="$INSTALL_DIR/mole"
     if [[ -x "$binary" ]]; then
         local version
-        version=$("$binary" --version 2> /dev/null | awk '/Mole version/ {print $NF; exit}')
+        version=$("$binary" --version 2> /dev/null | awk '/Linux-Mole version|Mole version/ {print $NF; exit}')
         if [[ -n "$version" ]]; then
             echo "$version"
         else
@@ -395,7 +395,7 @@ check_requirements() {
                 return 0
             fi
 
-            echo -e "${YELLOW}Mole is installed via Homebrew${NC}"
+            echo -e "${YELLOW}Linux-Mole is installed via Homebrew${NC}"
             echo ""
             echo "Choose one:"
             echo -e "  1. Update via Homebrew: ${GREEN}brew upgrade mole${NC}"
@@ -683,7 +683,7 @@ verify_installation() {
         if "$INSTALL_DIR/mole" --help > /dev/null 2>&1; then
             return 0
         else
-            log_warning "Mole command installed but may not be working properly"
+            log_warning "Linux-Mole command installed but may not be working properly"
         fi
     else
         log_error "Installation verification failed"
@@ -717,7 +717,7 @@ print_usage_summary() {
 
     echo ""
 
-    local message="Mole ${action} successfully"
+    local message="Linux-Mole ${action} successfully"
 
     if [[ "$action" == "updated" && -n "$previous_version" && -n "$new_version" && "$previous_version" != "$new_version" ]]; then
         message+=", ${previous_version} -> ${new_version}"
@@ -800,7 +800,7 @@ perform_update() {
             source "$SOURCE_DIR/lib/core/common.sh"
             update_via_homebrew "$current_version"
         else
-            log_error "Cannot update Homebrew-managed Mole without full installation"
+            log_error "Cannot update Homebrew-managed Linux-Mole without full installation"
             echo ""
             echo "Please update via Homebrew:"
             echo -e "  ${GREEN}brew upgrade mole${NC}"
@@ -813,7 +813,7 @@ perform_update() {
     installed_version="$(get_installed_version || true)"
 
     if [[ -z "$installed_version" ]]; then
-        log_warning "Mole is not currently installed in $INSTALL_DIR. Running fresh installation."
+        log_warning "Linux-Mole is not currently installed in $INSTALL_DIR. Running fresh installation."
         perform_install
         return
     fi
@@ -823,7 +823,7 @@ perform_update() {
     target_version="$(get_source_version || true)"
 
     if [[ -z "$target_version" ]]; then
-        log_error "Unable to determine the latest Mole version."
+        log_error "Unable to determine the latest Linux-Mole version."
         exit 1
     fi
 

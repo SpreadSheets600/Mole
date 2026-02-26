@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Linux Mole</h1>
+  <h1>Linux-Mole</h1>
   <p><em>Deep clean and optimize your system.</em></p>
 </div>
 
@@ -44,9 +44,9 @@ mo purge                     # Clean project build artifacts
 mo installer                 # Find and remove installer files
 
 mo completion                # Set up shell tab completion
-mo update                    # Update Mole
+mo update                    # Update Linux-Mole
 mo update --nightly          # Update to latest unreleased main build, script install only
-mo remove                    # Remove Mole from system
+mo remove                    # Remove Linux-Mole from system
 mo --help                    # Show help
 mo --version                 # Show installed version
 
@@ -61,12 +61,55 @@ mo purge --paths             # Configure project scan directories
 mo analyze /mnt              # Analyze mounted external drives
 ```
 
+## Command Snapshots
+
+Snapshots captured from this repo on Linux/WSL:
+
+```bash
+$ ./mole --help
+__  __       _
+|  \/  | ___ | | ___
+| |\/| |/ _ \| |/ _ \
+| |  | | (_) | |  __/  https://github.com/SpreadSheets600/Mole
+|_|  |_|\___/|_|\___|  Deep clean and optimize your Linux system.
+...
+  mo analyze /mnt              Analyze external drives only
+```
+
+```bash
+$ ./mole --version
+Linux-Mole version 1.27.0
+OS: Debian GNU/Linux 13 (trixie)
+Architecture: x86_64
+Kernel: 6.6.87.2-microsoft-standard-WSL2
+SIP: Unknown
+Disk Free: 938G
+Install: Manual
+Shell: /usr/bin/zsh
+```
+
+```bash
+$ ./mole clean --help
+Usage: mo clean [OPTIONS]
+
+Clean up disk space by removing caches, logs, and temporary files.
+
+Options:
+  --dry-run, -n     Preview cleanup without making changes
+  --whitelist       Manage protected paths
+  --debug           Show detailed operation logs
+  -h, --help        Show this help message
+
+Linux/WSL targets:
+  ~/.cache, ~/.local/share/Trash/files, ~/.npm/_cacache, ~/.cargo/registry/cache, /tmp (user-owned only)
+```
+
 ## Tips
 
-- Video tutorial: Watch the [Mole tutorial video](https://www.youtube.com/watch?v=UEe9-w4CcQ0), thanks to PAPAYA 電腦教室.
+- Video tutorial: Watch the [Linux-Mole tutorial video](https://www.youtube.com/watch?v=UEe9-w4CcQ0), thanks to PAPAYA 電腦教室.
 - Safety first: Deletions are permanent. Review carefully and preview with `mo clean --dry-run`. See [Security Audit](SECURITY_AUDIT.md).
 - Debug and logs: Use `--debug` for detailed logs. Combine with `--dry-run` for a full preview. File operations are logged to `~/.config/mole/operations.log`. Disable with `MO_NO_OPLOG=1`.
-- Navigation: Mole supports arrow keys and Vim bindings `h/j/k/l`.
+- Navigation: Linux-Mole supports arrow keys and Vim bindings `h/j/k/l`.
 
 ## Features in Detail
 
@@ -89,7 +132,7 @@ Space freed: 95.5GB | Free space now: 223.5GB
 ====================================================================
 ```
 
-Note: In `mo clean` -> Developer tools, Mole removes unused CoreSimulator `Volumes/Cryptex` entries and skips `IN_USE` items.
+Note: Linux/WSL cleanup targets include user caches, package caches, trash files, and temporary directories.
 
 ### System Optimization
 
@@ -114,7 +157,7 @@ Use `mo optimize --whitelist` to exclude specific optimizations.
 
 ### Disk Space Analyzer
 
-By default, Mole skips external drives under `/mnt` and `/media` for faster startup. To inspect them, run `mo analyze /mnt` or a specific mount path.
+By default, Linux-Mole skips external drives under `/mnt` and `/media` for faster startup. To inspect them, run `mo analyze /mnt` or a specific mount path.
 
 ```bash
 $ mo analyze
@@ -137,7 +180,7 @@ Real-time dashboard with health score, hardware info, and performance metrics.
 ```bash
 $ mo status
 
-Mole Status  Health ● 92  Linux Host · 32GB · Kernel 6.x
+Linux-Mole Status  Health ● 92  Linux Host · 32GB · Kernel 6.x
 
 ⚙ CPU                                    ▦ Memory
 Total   ████████████░░░░░░░  45.2%       Used    ███████████░░░░░░░  58.4%
@@ -196,7 +239,7 @@ Run `mo purge --paths` to configure scan directories, or edit `~/.config/mole/pu
 ~/Work/ClientB
 ```
 
-When custom paths are configured, Mole scans only those directories. Otherwise, it uses defaults like `~/Projects`, `~/GitHub`, and `~/dev`.
+When custom paths are configured, Linux-Mole scans only those directories. Otherwise, it uses defaults like `~/Projects`, `~/GitHub`, and `~/dev`.
 
 </details>
 
@@ -219,14 +262,14 @@ Select Installers to Remove - 3.8GB (5 selected)
 
 ## Quick Launchers
 
-Launch Mole commands from Raycast or Alfred:
+Launch Linux-Mole commands from Raycast or Alfred:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/scripts/setup-quick-launchers.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SpreadSheets600/Mole/main/scripts/setup-quick-launchers.sh | bash
 ```
 
-Adds 5 commands: `Mole Clean`, `Mole Uninstall`, `Mole Optimize`, `Mole Analyze`, `Mole Status`.
+Adds 5 commands: `Linux-Mole Clean`, `Linux-Mole Uninstall`, `Linux-Mole Optimize`, `Linux-Mole Analyze`, `Linux-Mole Status`.
 
 ## License
 
-MIT License. Feel free to use Mole and contribute.
+MIT License. Feel free to use Linux-Mole and contribute.
