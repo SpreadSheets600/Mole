@@ -15,26 +15,19 @@
 **Install (stable release):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SpreadSheets600/Mole/main/install.sh | MOLE_REPO="SpreadSheets600/Mole" bash
 ```
 
 **Install latest main branch (nightly/edge):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/install.sh | bash -s -- latest
+curl -fsSL https://raw.githubusercontent.com/SpreadSheets600/Mole/main/install.sh | MOLE_REPO="SpreadSheets600/Mole" bash -s -- latest
 ```
 
 **Install a specific version:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/install.sh | bash -s -- 1.27.0
-```
-
-**Install from your fork:**
-
-```bash
-# Replace YOUR_GITHUB_USERNAME with your account name
-curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/Mole/main/install.sh | MOLE_REPO="YOUR_GITHUB_USERNAME/Mole" bash
+curl -fsSL https://raw.githubusercontent.com/SpreadSheets600/Mole/main/install.sh | MOLE_REPO="SpreadSheets600/Mole" bash -s -- 1.27.0
 ```
 
 **Linux/WSL support:** `mo clean`, `mo optimize`, `mo installer`, `mo analyze`, `mo purge`, and `mo status` are optimized for Linux and WSL.
