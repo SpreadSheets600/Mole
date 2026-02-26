@@ -21,6 +21,7 @@ MOLE_REPO="${MOLE_REPO%/}"
 GITHUB_REPO_URL="https://github.com/${MOLE_REPO}"
 GITHUB_REPO_GIT_URL="${GITHUB_REPO_URL}.git"
 GITHUB_API_REPO_URL="https://api.github.com/repos/${MOLE_REPO}"
+LATEST_RELEASE_TAG_CACHE=""
 
 _SPINNER_PID=""
 start_line_spinner() {
@@ -232,6 +233,11 @@ get_source_version() {
 }
 
 get_latest_release_tag() {
+    if [[ -n "${LATEST_RELEASE_TAG_CACHE:-}" ]]; then
+        printf '%s\n' "$LATEST_RELEASE_TAG_CACHE"
+        return 0
+    fi
+
     local tag
     if ! command -v curl > /dev/null 2>&1; then
         return 1
@@ -242,6 +248,7 @@ get_latest_release_tag() {
     if [[ -z "$tag" ]]; then
         return 1
     fi
+    LATEST_RELEASE_TAG_CACHE="$tag"
     printf '%s\n' "$tag"
 }
 
@@ -265,6 +272,34 @@ normalize_release_tag() {
     if [[ -n "$tag" ]]; then
         printf 'V%s\n' "$tag"
     fi
+}
+
+get_requested_release_tag() {
+    local requested="${MOLE_VERSION:-}"
+
+    if [[ "${MOLE_EDGE_INSTALL:-}" == "true" ]]; then
+        return 1
+    fi
+
+    if [[ -n "$requested" ]]; then
+        case "$requested" in
+            main | latest | dev)
+                return 1
+                ;;
+            *)
+                normalize_release_tag "$requested"
+                return 0
+                ;;
+        esac
+    fi
+
+    local latest_tag
+    latest_tag="$(get_latest_release_tag || true)"
+    if [[ -z "$latest_tag" ]]; then
+        latest_tag="$(get_latest_release_tag_from_git || true)"
+    fi
+    [[ -n "$latest_tag" ]] || return 1
+    normalize_release_tag "$latest_tag"
 }
 
 get_installed_version() {
@@ -319,6 +354,7 @@ parse_args() {
                 ;;
             [0-9]* | V[0-9]* | v[0-9]*)
                 export MOLE_VERSION="$token"
+                export MOLE_PINNED_VERSION="true"
                 version_token="$token"
                 unset 'args[$i]'
                 ;;
@@ -537,16 +573,32 @@ download_binary() {
         fi
     fi
 
-    local version
-    version=$(get_source_version)
-    if [[ -z "$version" ]]; then
-        log_warning "Could not determine version for ${binary_name}, trying local build"
+    local -a urls=()
+    local tag=""
+
+    tag="$(get_requested_release_tag || true)"
+    if [[ -z "$tag" ]]; then
+        local version=""
+        version="$(get_source_version || true)"
+        if [[ -n "$version" ]]; then
+            tag="$(normalize_release_tag "$version")"
+        fi
+    fi
+
+    if [[ "${MOLE_PINNED_VERSION:-}" != "true" && "${MOLE_EDGE_INSTALL:-}" != "true" ]]; then
+        urls+=("${GITHUB_REPO_URL}/releases/latest/download/${binary_name}-${platform}-${arch_suffix}")
+    fi
+    if [[ -n "$tag" ]]; then
+        urls+=("${GITHUB_REPO_URL}/releases/download/${tag}/${binary_name}-${platform}-${arch_suffix}")
+    fi
+
+    if [[ ${#urls[@]} -eq 0 ]]; then
+        log_warning "Could not determine release asset for ${binary_name}, trying local build"
         if build_binary_from_source "$binary_name" "$target_path"; then
             return 0
         fi
         return 1
     fi
-    local url="${GITHUB_REPO_URL}/releases/download/V${version}/${binary_name}-${platform}-${arch_suffix}"
 
     # Skip preflight network checks to avoid false negatives.
 
@@ -556,22 +608,26 @@ download_binary() {
         echo "Downloading ${binary_name}..."
     fi
 
-    if curl -fsSL --connect-timeout 10 --max-time 60 -o "$target_path" "$url"; then
-        if [[ -t 1 ]]; then stop_line_spinner; fi
-        chmod +x "$target_path"
-        if [[ "$OS_NAME" == "Darwin" ]] && command -v xattr > /dev/null 2>&1; then
-            xattr -cr "$target_path" 2> /dev/null || true
-        fi
-        log_success "Downloaded ${binary_name} binary"
-    else
-        if [[ -t 1 ]]; then stop_line_spinner; fi
-        log_warning "Could not download ${binary_name} binary, v${version}, trying local build"
-        if build_binary_from_source "$binary_name" "$target_path"; then
+    local url=""
+    for url in "${urls[@]}"; do
+        if curl -fsSL --connect-timeout 10 --max-time 60 -o "$target_path" "$url"; then
+            if [[ -t 1 ]]; then stop_line_spinner; fi
+            chmod +x "$target_path"
+            if [[ "$OS_NAME" == "Darwin" ]] && command -v xattr > /dev/null 2>&1; then
+                xattr -cr "$target_path" 2> /dev/null || true
+            fi
+            log_success "Downloaded ${binary_name} binary"
             return 0
         fi
-        log_error "Failed to install ${binary_name} binary"
-        return 1
+    done
+
+    if [[ -t 1 ]]; then stop_line_spinner; fi
+    log_warning "Could not download ${binary_name} binary from release assets, trying local build"
+    if build_binary_from_source "$binary_name" "$target_path"; then
+        return 0
     fi
+    log_error "Failed to install ${binary_name} binary"
+    return 1
 }
 
 # File installation (bin/lib/scripts + go helpers).
