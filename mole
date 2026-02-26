@@ -12,6 +12,18 @@ source "$SCRIPT_DIR/lib/core/commands.sh"
 
 trap cleanup_temp_files EXIT INT TERM
 
+DEFAULT_MOLE_REPO="tw93/mole"
+MOLE_REPO="${MOLE_REPO:-$DEFAULT_MOLE_REPO}"
+MOLE_REPO="${MOLE_REPO#https://github.com/}"
+MOLE_REPO="${MOLE_REPO%.git}"
+MOLE_REPO="${MOLE_REPO#/}"
+MOLE_REPO="${MOLE_REPO%/}"
+[[ -z "$MOLE_REPO" ]] && MOLE_REPO="$DEFAULT_MOLE_REPO"
+MOLE_GITHUB_URL="https://github.com/${MOLE_REPO}"
+MOLE_RAW_BASE="${MOLE_RAW_BASE:-https://raw.githubusercontent.com/${MOLE_REPO}/main}"
+MOLE_RAW_BASE="${MOLE_RAW_BASE%/}"
+MOLE_API_REPO_URL="https://api.github.com/repos/${MOLE_REPO}"
+
 # Version and update helpers
 VERSION="1.27.0"
 MOLE_TAGLINE="Deep clean and optimize your Mac."
@@ -23,14 +35,14 @@ is_touchid_configured() {
 
 get_latest_version() {
     curl -fsSL --connect-timeout 2 --max-time 3 -H "Cache-Control: no-cache" \
-        "https://raw.githubusercontent.com/tw93/mole/main/mole" 2> /dev/null |
+        "${MOLE_RAW_BASE}/mole" 2> /dev/null |
         grep '^VERSION=' | head -1 | sed 's/VERSION="\(.*\)"/\1/'
 }
 
 get_latest_version_from_github() {
     local version
     version=$(curl -fsSL --connect-timeout 2 --max-time 3 \
-        "https://api.github.com/repos/tw93/mole/releases/latest" 2> /dev/null |
+        "${MOLE_API_REPO_URL}/releases/latest" 2> /dev/null |
         grep '"tag_name"' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
     version="${version#v}"
     version="${version#V}"
@@ -113,7 +125,7 @@ show_brand_banner() {
 ${GREEN} __  __       _      ${NC}
 ${GREEN}|  \/  | ___ | | ___ ${NC}
 ${GREEN}| |\/| |/ _ \| |/ _ \\${NC}
-${GREEN}| |  | | (_) | |  __/${NC}  ${BLUE}https://github.com/tw93/mole${NC}
+${GREEN}| |  | | (_) | |  __/${NC}  ${BLUE}${MOLE_GITHUB_URL}${NC}
 ${GREEN}|_|  |_|\___/|_|\___|${NC}  ${GREEN}${MOLE_TAGLINE}${NC}
 
 EOF
@@ -285,7 +297,7 @@ update_mole() {
         echo "${download_label%...}"
     fi
 
-    local installer_url="https://raw.githubusercontent.com/tw93/mole/main/install.sh"
+    local installer_url="${MOLE_RAW_BASE}/install.sh"
     local tmp_installer
     tmp_installer="$(mktemp_file)" || {
         log_error "Update failed"

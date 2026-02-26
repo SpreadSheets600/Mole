@@ -1,59 +1,44 @@
 <div align="center">
-  <h1>Mole</h1>
-  <p><em>Deep clean and optimize your Mac.</em></p>
+  <h1>Linux Mole</h1>
+  <p><em>Deep clean and optimize your system.</em></p>
 </div>
-
-<p align="center">
-  <a href="https://github.com/tw93/mole/stargazers"><img src="https://img.shields.io/github/stars/tw93/mole?style=flat-square" alt="Stars"></a>
-  <a href="https://github.com/tw93/mole/releases"><img src="https://img.shields.io/github/v/tag/tw93/mole?label=version&style=flat-square" alt="Version"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
-  <a href="https://github.com/tw93/mole/commits"><img src="https://img.shields.io/github/commit-activity/m/tw93/mole?style=flat-square" alt="Commits"></a>
-  <a href="https://twitter.com/HiTw93"><img src="https://img.shields.io/badge/follow-Tw93-red?style=flat-square&logo=Twitter" alt="Twitter"></a>
-  <a href="https://t.me/+GclQS9ZnxyI2ODQ1"><img src="https://img.shields.io/badge/chat-Telegram-blueviolet?style=flat-square&logo=Telegram" alt="Telegram"></a>
-</p>
-
-<p align="center">
-  <img src="https://cdn.tw93.fun/img/mole.jpeg" alt="Mole - 95.50GB freed" width="1000" />
-</p>
 
 ## Features
 
-- **All-in-one toolkit**: Combines CleanMyMac, AppCleaner, DaisyDisk, and iStat Menus in a **single binary**
+- **All-in-one toolkit**: Unified cleanup, optimization, installer scanning, and system status in a **single binary**
 - **Deep cleaning**: Removes caches, logs, and browser leftovers to **reclaim gigabytes of space**
-- **Smart uninstaller**: Removes apps plus launch agents, preferences, and **hidden remnants**
 - **Disk insights**: Visualizes usage, finds large files, **rebuilds caches**, and refreshes system services
 - **Live monitoring**: Shows real-time CPU, GPU, memory, disk, and network stats
 
 ## Quick Start
 
-**Install via Homebrew:**
-
-```bash
-brew install mole
-```
-
-**Or via script:**
+**Install via script:**
 
 ```bash
 # Optional args: -s latest for main branch code, -s 1.17.0 for specific version
 curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/install.sh | bash
 ```
 
-**Windows:** Mole is built for macOS. An experimental Windows version is available in the [windows branch](https://github.com/tw93/Mole/tree/windows) for early adopters.
+**Distribute from your fork:**
+
+```bash
+# Replace YOUR_GITHUB_USERNAME with your account name
+curl -fsSL https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/Mole/main/install.sh | MOLE_REPO="YOUR_GITHUB_USERNAME/Mole" bash
+```
+
+**Linux/WSL support:** `mo clean`, `mo optimize`, `mo installer`, `mo analyze`, `mo purge`, and `mo status` are optimized for Linux and WSL.
 
 **Run:**
 
 ```bash
 mo                           # Interactive menu
 mo clean                     # Deep cleanup
-mo uninstall                 # Remove apps + leftovers
 mo optimize                  # Refresh caches & services
 mo analyze                   # Visual disk explorer
 mo status                    # Live system health dashboard
 mo purge                     # Clean project build artifacts
 mo installer                 # Find and remove installer files
 
-mo touchid                   # Configure Touch ID for sudo
 mo completion                # Set up shell tab completion
 mo update                    # Update Mole
 mo update --nightly          # Update to latest unreleased main build, script install only
@@ -69,7 +54,7 @@ mo optimize --dry-run        # Preview optimization actions
 mo optimize --debug          # Run with detailed operation logs
 mo optimize --whitelist      # Manage protected optimization rules
 mo purge --paths             # Configure project scan directories
-mo analyze /Volumes          # Analyze external drives only
+mo analyze /mnt              # Analyze mounted external drives
 ```
 
 ## Tips
@@ -102,30 +87,6 @@ Space freed: 95.5GB | Free space now: 223.5GB
 
 Note: In `mo clean` -> Developer tools, Mole removes unused CoreSimulator `Volumes/Cryptex` entries and skips `IN_USE` items.
 
-### Smart App Uninstaller
-
-```bash
-$ mo uninstall
-
-Select Apps to Remove
-═══════════════════════════
-▶ ☑ Photoshop 2024            (4.2G) | Old
-  ☐ IntelliJ IDEA             (2.8G) | Recent
-  ☐ Premiere Pro              (3.4G) | Recent
-
-Uninstalling: Photoshop 2024
-
-  ✓ Removed application
-  ✓ Cleaned 52 related files across 12 locations
-    - Application Support, Caches, Preferences
-    - Logs, WebKit storage, Cookies
-    - Extensions, Plugins, Launch daemons
-
-====================================================================
-Space freed: 12.8GB
-====================================================================
-```
-
 ### System Optimization
 
 ```bash
@@ -135,7 +96,7 @@ System: 5/32 GB RAM | 333/460 GB Disk (72%) | Uptime 6d
 
   ✓ Rebuild system databases and clear caches
   ✓ Reset network services
-  ✓ Refresh Finder and Dock
+  ✓ Refresh package/runtime caches
   ✓ Clean diagnostic and crash logs
   ✓ Remove swap files and restart dynamic pager
   ✓ Rebuild launch services and spotlight index
@@ -149,7 +110,7 @@ Use `mo optimize --whitelist` to exclude specific optimizations.
 
 ### Disk Space Analyzer
 
-By default, Mole skips external drives under `/Volumes` for faster startup. To inspect them, run `mo analyze /Volumes` or a specific mount path.
+By default, Mole skips external drives under `/mnt` and `/media` for faster startup. To inspect them, run `mo analyze /mnt` or a specific mount path.
 
 ```bash
 $ mo analyze
@@ -172,7 +133,7 @@ Real-time dashboard with health score, hardware info, and performance metrics.
 ```bash
 $ mo status
 
-Mole Status  Health ● 92  MacBook Pro · M4 Pro · 32GB · macOS 14.5
+Mole Status  Health ● 92  Linux Host · 32GB · Kernel 6.x
 
 ⚙ CPU                                    ▦ Memory
 Total   ████████████░░░░░░░  45.2%       Used    ███████████░░░░░░░  58.4%
@@ -215,8 +176,8 @@ Select Categories to Clean - 18.5GB (8 selected)
   ● backend-service    2.5GB | node_modules
 ```
 
-> We recommend installing `fd` on macOS.
-> `brew install fd`
+> We recommend installing `fd` for faster scans.
+> Debian/Ubuntu: `sudo apt install fd-find` (`fd` may be named `fdfind`)
 
 > **Use with caution:** This permanently deletes selected artifacts. Review carefully before confirming. Projects newer than 7 days are marked and unselected by default.
 
@@ -237,19 +198,19 @@ When custom paths are configured, Mole scans only those directories. Otherwise, 
 
 ### Installer Cleanup
 
-Find and remove large installer files across Downloads, Desktop, Homebrew caches, iCloud, and Mail. Each file is labeled by source.
+Find and remove large installer files across Downloads, Desktop, cache, trash, and temp paths. Each file is labeled by source.
 
 ```bash
 mo installer
 
 Select Installers to Remove - 3.8GB (5 selected)
 
-➤ ● Photoshop_2024.dmg     1.2GB | Downloads
-  ● IntelliJ_IDEA.dmg       850.6MB | Downloads
-  ● Illustrator_Setup.pkg   920.4MB | Downloads
-  ● PyCharm_Pro.dmg         640.5MB | Homebrew
-  ● Acrobat_Reader.dmg      220.4MB | Downloads
-  ○ AppCode_Legacy.zip      410.6MB | Downloads
+➤ ● ubuntu-24.04.iso           5.3GB | Downloads
+  ● code_1.95.2_amd64.deb      110MB | Downloads
+  ● docker-desktop.rpm         505MB | Downloads
+  ● appimage-tool.AppImage      75MB | Desktop
+  ● cache_bundle.tar.gz        940MB | Cache
+  ○ legacy-installer.zip       410MB | Downloads
 ```
 
 ## Quick Launchers
@@ -257,48 +218,10 @@ Select Installers to Remove - 3.8GB (5 selected)
 Launch Mole commands from Raycast or Alfred:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tw93/Mole/main/scripts/setup-quick-launchers.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/scripts/setup-quick-launchers.sh | bash
 ```
 
 Adds 5 commands: `Mole Clean`, `Mole Uninstall`, `Mole Optimize`, `Mole Analyze`, `Mole Status`.
-
-### Raycast Setup
-
-After running the script, complete these steps in Raycast:
-
-1. Open Raycast Settings (⌘ + ,)
-2. Go to **Extensions** → **Script Commands**
-3. Click **"Add Script Directory"** (or **"+"**)
-4. Add path: `~/Library/Application Support/Raycast/script-commands`
-5. Search in Raycast for: **"Reload Script Directories"** and run it
-6. Done! Search for `Mole Clean` or `clean`, `Mole Optimize`, or `Mole Status` to use the commands
-
-> **Note**: The script creates the commands, but Raycast still requires a one-time manual script directory setup.
-
-### Terminal Detection
-
-Mole auto-detects your terminal app. iTerm2 has known compatibility issues. We highly recommend [Kaku](https://github.com/tw93/Kaku). Other good options are Alacritty, kitty, WezTerm, Ghostty, and Warp. To override, set `MO_LAUNCHER_APP=<name>`.
-
-## Community Love
-
-Thanks to everyone who helped build Mole. Go follow them. ❤️
-
-<a href="https://github.com/tw93/Mole/graphs/contributors">
-  <img src="./CONTRIBUTORS.svg?v=2" width="1000" />
-</a>
-
-<br/><br/>
-Real feedback from users who shared Mole on X.
-
-<img src="https://cdn.tw93.fun/pic/lovemole.jpeg" alt="Community feedback on Mole" width="1000" />
-
-## Support
-
-- If Mole helped you, star the repo or [share it](https://twitter.com/intent/tweet?url=https://github.com/tw93/Mole&text=Mole%20-%20Deep%20clean%20and%20optimize%20your%20Mac.) with friends.
-- Got ideas or bugs? Read the [Contributing Guide](CONTRIBUTING.md) and open an issue or PR.
-- Like Mole? <a href="https://miaoyan.app/cats.html?name=Mole" target="_blank">Buy Tw93 a Coke</a> to support the project. 🥤 Supporters are below.
-
-<a href="https://miaoyan.app/cats.html?name=Mole"><img src="https://miaoyan.app/assets/sponsors.svg" width="1000" loading="lazy" /></a>
 
 ## License
 

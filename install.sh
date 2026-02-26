@@ -11,6 +11,17 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+DEFAULT_MOLE_REPO="tw93/mole"
+MOLE_REPO="${MOLE_REPO:-$DEFAULT_MOLE_REPO}"
+MOLE_REPO="${MOLE_REPO#https://github.com/}"
+MOLE_REPO="${MOLE_REPO%.git}"
+MOLE_REPO="${MOLE_REPO#/}"
+MOLE_REPO="${MOLE_REPO%/}"
+[[ -z "$MOLE_REPO" ]] && MOLE_REPO="$DEFAULT_MOLE_REPO"
+GITHUB_REPO_URL="https://github.com/${MOLE_REPO}"
+GITHUB_REPO_GIT_URL="${GITHUB_REPO_URL}.git"
+GITHUB_API_REPO_URL="https://api.github.com/repos/${MOLE_REPO}"
+
 _SPINNER_PID=""
 start_line_spinner() {
     local msg="$1"
@@ -92,6 +103,9 @@ SOURCE_DIR=""
 
 ACTION="install"
 
+OS_NAME="$(uname -s 2> /dev/null || echo unknown)"
+ARCH_NAME="$(uname -m 2> /dev/null || echo unknown)"
+
 # Resolve source dir (local checkout, env override, or download).
 needs_sudo() {
     if [[ -e "$INSTALL_DIR" ]]; then
@@ -157,12 +171,12 @@ resolve_source_dir() {
     if [[ "$branch" != "main" && "$branch" != "dev" ]]; then
         branch="$(normalize_release_tag "$branch")"
     fi
-    local url="https://github.com/tw93/mole/archive/refs/heads/main.tar.gz"
+    local url="${GITHUB_REPO_URL}/archive/refs/heads/main.tar.gz"
 
     if [[ "$branch" == "dev" ]]; then
-        url="https://github.com/tw93/mole/archive/refs/heads/dev.tar.gz"
+        url="${GITHUB_REPO_URL}/archive/refs/heads/dev.tar.gz"
     elif [[ "$branch" != "main" ]]; then
-        url="https://github.com/tw93/mole/archive/refs/tags/${branch}.tar.gz"
+        url="${GITHUB_REPO_URL}/archive/refs/tags/${branch}.tar.gz"
     fi
 
     start_line_spinner "Fetching Mole source, ${branch}..."
@@ -197,7 +211,7 @@ resolve_source_dir() {
             git_args+=("--branch" "$branch")
         fi
 
-        if git clone "${git_args[@]}" https://github.com/tw93/mole.git "$tmp/mole" > /dev/null 2>&1; then
+        if git clone "${git_args[@]}" "$GITHUB_REPO_GIT_URL" "$tmp/mole" > /dev/null 2>&1; then
             stop_line_spinner
             SOURCE_DIR="$tmp/mole"
             return 0
@@ -223,7 +237,7 @@ get_latest_release_tag() {
         return 1
     fi
     tag=$(curl -fsSL --connect-timeout 2 --max-time 3 \
-        "https://api.github.com/repos/tw93/mole/releases/latest" 2> /dev/null |
+        "${GITHUB_API_REPO_URL}/releases/latest" 2> /dev/null |
         sed -n 's/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
     if [[ -z "$tag" ]]; then
         return 1
@@ -235,7 +249,7 @@ get_latest_release_tag_from_git() {
     if ! command -v git > /dev/null 2>&1; then
         return 1
     fi
-    git ls-remote --tags --refs https://github.com/tw93/mole.git 2> /dev/null |
+    git ls-remote --tags --refs "$GITHUB_REPO_GIT_URL" 2> /dev/null |
         awk -F/ '{print $NF}' |
         grep -E '^V[0-9]' |
         sort -V |
@@ -360,12 +374,12 @@ parse_args() {
 
 # Environment checks and directory setup
 check_requirements() {
-    if [[ "$OSTYPE" != "darwin"* ]]; then
-        log_error "This tool is designed for macOS only"
+    if [[ "$OS_NAME" != "Darwin" && "$OS_NAME" != "Linux" ]]; then
+        log_error "Unsupported OS: $OS_NAME (supported: macOS, Linux)"
         exit 1
     fi
 
-    if command -v brew > /dev/null 2>&1 && brew list mole > /dev/null 2>&1; then
+    if [[ "$OS_NAME" == "Darwin" ]] && command -v brew > /dev/null 2>&1 && brew list mole > /dev/null 2>&1; then
         local mole_path
         mole_path=$(command -v mole 2> /dev/null || true)
         local is_homebrew_binary=false
@@ -398,6 +412,36 @@ check_requirements() {
         log_error "Parent directory $(dirname "$INSTALL_DIR") does not exist"
         exit 1
     fi
+}
+
+sed_in_place() {
+    local expr="$1"
+    local file="$2"
+    if [[ "$OS_NAME" == "Darwin" ]]; then
+        maybe_sudo sed -i '' "$expr" "$file"
+    else
+        maybe_sudo sed -i "$expr" "$file"
+    fi
+}
+
+binary_platform() {
+    case "$OS_NAME" in
+        Darwin) echo "darwin" ;;
+        Linux) echo "linux" ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+binary_arch() {
+    case "$ARCH_NAME" in
+        arm64 | aarch64) echo "arm64" ;;
+        x86_64 | amd64) echo "amd64" ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 create_directories() {
@@ -459,20 +503,29 @@ build_binary_from_source() {
 download_binary() {
     local binary_name="$1"
     local target_path="$CONFIG_DIR/bin/${binary_name}-go"
-    local arch
-    arch=$(uname -m)
-    local arch_suffix="amd64"
-    if [[ "$arch" == "arm64" ]]; then
-        arch_suffix="arm64"
-    fi
+    local platform arch_suffix
+    platform="$(binary_platform)" || {
+        log_warning "Unsupported OS for bundled ${binary_name} binaries: $OS_NAME"
+        if build_binary_from_source "$binary_name" "$target_path"; then
+            return 0
+        fi
+        return 1
+    }
+    arch_suffix="$(binary_arch)" || {
+        log_warning "Unsupported architecture for bundled ${binary_name} binaries: $ARCH_NAME"
+        if build_binary_from_source "$binary_name" "$target_path"; then
+            return 0
+        fi
+        return 1
+    }
 
     if [[ -f "$SOURCE_DIR/bin/${binary_name}-go" ]]; then
         cp "$SOURCE_DIR/bin/${binary_name}-go" "$target_path"
         chmod +x "$target_path"
         log_success "Installed local ${binary_name} binary"
         return 0
-    elif [[ -f "$SOURCE_DIR/bin/${binary_name}-darwin-${arch_suffix}" ]]; then
-        cp "$SOURCE_DIR/bin/${binary_name}-darwin-${arch_suffix}" "$target_path"
+    elif [[ -f "$SOURCE_DIR/bin/${binary_name}-${platform}-${arch_suffix}" ]]; then
+        cp "$SOURCE_DIR/bin/${binary_name}-${platform}-${arch_suffix}" "$target_path"
         chmod +x "$target_path"
         log_success "Installed local ${binary_name} binary"
         return 0
@@ -493,7 +546,7 @@ download_binary() {
         fi
         return 1
     fi
-    local url="https://github.com/tw93/mole/releases/download/V${version}/${binary_name}-darwin-${arch_suffix}"
+    local url="${GITHUB_REPO_URL}/releases/download/V${version}/${binary_name}-${platform}-${arch_suffix}"
 
     # Skip preflight network checks to avoid false negatives.
 
@@ -506,7 +559,9 @@ download_binary() {
     if curl -fsSL --connect-timeout 10 --max-time 60 -o "$target_path" "$url"; then
         if [[ -t 1 ]]; then stop_line_spinner; fi
         chmod +x "$target_path"
-        xattr -cr "$target_path" 2> /dev/null || true
+        if [[ "$OS_NAME" == "Darwin" ]] && command -v xattr > /dev/null 2>&1; then
+            xattr -cr "$target_path" 2> /dev/null || true
+        fi
         log_success "Downloaded ${binary_name} binary"
     else
         if [[ -t 1 ]]; then stop_line_spinner; fi
@@ -604,11 +659,16 @@ install_files() {
     fi
 
     if [[ "$source_dir_abs" != "$install_dir_abs" ]]; then
-        maybe_sudo sed -i '' "s|SCRIPT_DIR=.*|SCRIPT_DIR=\"$CONFIG_DIR\"|" "$INSTALL_DIR/mole"
+        sed_in_place "s|SCRIPT_DIR=.*|SCRIPT_DIR=\"$CONFIG_DIR\"|" "$INSTALL_DIR/mole"
+        sed_in_place "s|^DEFAULT_MOLE_REPO=.*|DEFAULT_MOLE_REPO=\"$MOLE_REPO\"|" "$INSTALL_DIR/mole"
     fi
 
     if ! download_binary "analyze"; then
-        exit 1
+        if [[ "$OS_NAME" == "Linux" ]]; then
+            log_warning "Analyze binary install failed on Linux; continuing without bundled analyzer"
+        else
+            exit 1
+        fi
     fi
     if ! download_binary "status"; then
         exit 1
@@ -671,22 +731,26 @@ print_usage_summary() {
     echo "Usage:"
     if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
         echo "  mo                           # Interactive menu"
-        echo "  mo clean                     # Deep cleanup"
-        echo "  mo uninstall                 # Remove apps + leftovers"
-        echo "  mo optimize                  # Check and maintain system"
-        echo "  mo analyze                   # Explore disk usage"
         echo "  mo status                    # Monitor system health"
-        echo "  mo touchid                   # Configure Touch ID for sudo"
+        if [[ "$OS_NAME" == "Darwin" ]]; then
+            echo "  mo clean                     # Deep cleanup"
+            echo "  mo uninstall                 # Remove apps + leftovers"
+            echo "  mo optimize                  # Check and maintain system"
+            echo "  mo analyze                   # Explore disk usage"
+            echo "  mo touchid                   # Configure Touch ID for sudo"
+        fi
         echo "  mo update                    # Update to latest version"
         echo "  mo --help                    # Show all commands"
     else
         echo "  $INSTALL_DIR/mo                           # Interactive menu"
-        echo "  $INSTALL_DIR/mo clean                     # Deep cleanup"
-        echo "  $INSTALL_DIR/mo uninstall                 # Remove apps + leftovers"
-        echo "  $INSTALL_DIR/mo optimize                  # Check and maintain system"
-        echo "  $INSTALL_DIR/mo analyze                   # Explore disk usage"
         echo "  $INSTALL_DIR/mo status                    # Monitor system health"
-        echo "  $INSTALL_DIR/mo touchid                   # Configure Touch ID for sudo"
+        if [[ "$OS_NAME" == "Darwin" ]]; then
+            echo "  $INSTALL_DIR/mo clean                     # Deep cleanup"
+            echo "  $INSTALL_DIR/mo uninstall                 # Remove apps + leftovers"
+            echo "  $INSTALL_DIR/mo optimize                  # Check and maintain system"
+            echo "  $INSTALL_DIR/mo analyze                   # Explore disk usage"
+            echo "  $INSTALL_DIR/mo touchid                   # Configure Touch ID for sudo"
+        fi
         echo "  $INSTALL_DIR/mo update                    # Update to latest version"
         echo "  $INSTALL_DIR/mo --help                    # Show all commands"
     fi
